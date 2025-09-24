@@ -1,0 +1,172 @@
+@baseUrl = http://localhost:8080
+@userId = 68d3b6d823367762a76eb159
+@taskId = 68d3b7f023367762a76eb15c
+
+### USERS CRUD ###
+
+### Create user
+POST {{baseUrl}}/users
+Content-Type: application/json
+
+{
+  "username": "AliceDoe",
+  "name": "Alice Doe",
+  "email": "alice@example.com",
+  "password": "secret123",
+  "role": "user"
+}
+
+# ✅ Sample Response (201 Created)
+# {
+#   "name": "Alice Doe",
+#   "email": "alice@example.com",
+#   "password": "secret123",
+#   "role": "user",
+#   "_id": "68d3b6d823367762a76eb159",
+#   "createdAt": "2025-09-24T09:16:08.228Z",
+#   "updatedAt": "2025-09-24T09:16:08.228Z",
+#   "__v": 0
+# }
+
+### Get all users
+GET {{baseUrl}}/users
+
+# ✅ Sample Response (200 OK)
+# [
+#   {
+#     "_id": "68d3b6d823367762a76eb159",
+#     "name": "Alice Doe",
+#     "email": "alice@example.com",
+#     "password": "secret123",
+#     "role": "user",
+#     "createdAt": "2025-09-24T09:16:08.228Z",
+#     "updatedAt": "2025-09-24T09:16:08.228Z",
+#     "__v": 0
+#   }
+# ]
+
+### Get user by id
+GET {{baseUrl}}/users/{{userId}}
+
+# ✅ Sample Response (200 OK)
+# {
+#   "_id": "68d3b6d823367762a76eb159",
+#   "name": "Alice Doe",
+#   "email": "alice@example.com",
+#   "role": "user"
+# }
+
+### Update user
+PUT {{baseUrl}}/users/{{userId}}
+Content-Type: application/json
+
+{
+  "name": "Victor Updated",
+  "email": "victor.updated@example.com",
+  "role": "admin"
+}
+
+# ✅ Sample Response (200 OK)
+# {
+#   "_id": "68d3b6d823367762a76eb159",
+#   "name": "Victor Updated",
+#   "email": "victor.updated@example.com",
+#   "role": "admin",
+#   "updatedAt": "2025-09-24T09:30:00.000Z"
+# }
+
+### Delete user
+DELETE {{baseUrl}}/users/{{userId}}
+
+# ✅ Sample Response (204 No Content)
+# (empty body)
+
+
+### TASKS CRUD ###
+
+### Create task
+POST {{baseUrl}}/tasks
+Content-Type: application/json
+
+{
+  "title": "Finish assignment",
+  "description": "Finish Week 03 Task Manager API",
+  "priority": "High",
+  "status": "Pending",
+  "dueDate": "2025-12-31",
+  "tags": ["school", "backend"],
+  "owner": "{{userId}}"
+}
+
+# ✅ Sample Response (201 Created)
+# {
+#   "title": "Finish assignment",
+#   "description": "Finish Week 03 Task Manager API",
+#   "priority": "High",
+#   "status": "Pending",
+#   "dueDate": "2025-12-31T00:00:00.000Z",
+#   "owner": "68d3b6d823367762a76eb159",
+#   "tags": ["school", "backend"],
+#   "_id": "68d3b7f023367762a76eb15c",
+#   "createdAt": "2025-09-24T09:20:48.711Z",
+#   "updatedAt": "2025-09-24T09:20:48.711Z",
+#   "__v": 0
+# }
+
+### Get all tasks
+GET {{baseUrl}}/tasks
+
+# ✅ Sample Response (200 OK)
+# [
+#   {
+#     "_id": "68d3b7f023367762a76eb15c",
+#     "title": "Buy groceries",
+#     "description": "Milk, eggs, bread",
+#     "priority": "Medium",
+#     "status": "Pending",
+#     "dueDate": "2025-12-31T00:00:00.000Z",
+#     "owner": "68d3b6d823367762a76eb159",
+#     "tags": ["school","backend"]
+#   }
+# ]
+
+### Get task by id
+GET {{baseUrl}}/tasks/{{taskId}}
+
+# ✅ Sample Response (200 OK)
+# {
+#   "_id": "68d3b7f023367762a76eb15c",
+#   "title": "Buy groceries",
+#   "description": "Milk, eggs, bread",
+#   "priority": "Medium",
+#   "status": "Pending",
+#   "dueDate": "2025-12-31T00:00:00.000Z",
+#   "owner": "68d3b6d823367762a76eb159",
+#   "tags": ["school","backend"]
+# }
+
+### Update task
+PUT {{baseUrl}}/tasks/{{taskId}}
+Content-Type: application/json
+
+{
+  "status": "In Progress",
+  "priority": "Medium"
+}
+
+# ✅ Sample Response (200 OK)
+# {
+#   "_id": "68d3b7f023367762a76eb15c",
+#   "title": "Buy groceries",
+#   "description": "Milk, eggs, bread",
+#   "priority": "Medium",
+#   "status": "In Progress",
+#   "dueDate": "2025-12-31T00:00:00.000Z",
+#   "owner": "68d3b6d823367762a76eb159"
+# }
+
+### Delete task
+DELETE {{baseUrl}}/tasks/{{taskId}}
+
+# ✅ Sample Response (204 No Content)
+# (empty body)
