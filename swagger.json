@@ -6,10 +6,13 @@
     "description": "Users & Tasks API — CRUD, validation, docs"
   },
   "servers": [
-    { "url": "http://localhost:8080", "description": "Local server" },
     {
       "url": "https://task-manager-api-9qsw.onrender.com",
       "description": "Render live server"
+    },
+    {
+      "url": "http://localhost:8080",
+      "description": "Local server"
     }
   ],
   "paths": {
