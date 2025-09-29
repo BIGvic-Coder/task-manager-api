@@ -3,7 +3,7 @@
   "info": {
     "title": "Task Manager API",
     "version": "1.0.0",
-    "description": "Users & Tasks API — CRUD, validation, docs"
+    "description": "Users, Tasks, Auth & ActivityLog API — CRUD, JWT auth, OAuth2, validation, docs"
   },
   "servers": [
     {
@@ -16,6 +16,86 @@
     }
   ],
   "paths": {
+    "/auth/register": {
+      "post": {
+        "summary": "Register a new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "example": "Alice Doe" },
+                  "email": { "type": "string", "example": "alice@example.com" },
+                  "password": { "type": "string", "example": "secret123" }
+                },
+                "required": ["name", "email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "User registered" },
+          "400": { "description": "Invalid input or email already registered" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login user and get JWT",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": { "type": "string", "example": "alice@example.com" },
+                  "password": { "type": "string", "example": "secret123" }
+                },
+                "required": ["email", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string", "example": "eyJhbGciOi..." }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Invalid email or password" }
+        }
+      }
+    },
+    "/auth/google": {
+      "get": {
+        "summary": "Login with Google (OAuth2)",
+        "description": "Redirects to Google login. After success, use /auth/google/callback.",
+        "responses": {
+          "302": { "description": "Redirect to Google login" }
+        }
+      }
+    },
+    "/auth/google/callback": {
+      "get": {
+        "summary": "Google OAuth callback",
+        "description": "Handles Google login and returns JWT.",
+        "responses": {
+          "200": { "description": "OAuth success — returns JWT" },
+          "401": { "description": "OAuth failed" }
+        }
+      }
+    },
     "/users": {
       "get": {
         "summary": "Get all users",
@@ -102,7 +182,8 @@
         }
       },
       "post": {
-        "summary": "Create new task",
+        "summary": "Create new task (requires JWT)",
+        "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -113,7 +194,8 @@
         },
         "responses": {
           "201": { "description": "Task created" },
-          "400": { "description": "Invalid input" }
+          "400": { "description": "Invalid input" },
+          "401": { "description": "Unauthorized" }
         }
       }
     },
@@ -134,7 +216,8 @@
         }
       },
       "put": {
-        "summary": "Update task",
+        "summary": "Update task (requires JWT)",
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "id",
@@ -153,11 +236,13 @@
         },
         "responses": {
           "200": { "description": "Task updated" },
-          "404": { "description": "Not found" }
+          "404": { "description": "Not found" },
+          "401": { "description": "Unauthorized" }
         }
       },
       "delete": {
-        "summary": "Delete task",
+        "summary": "Delete task (requires JWT)",
+        "security": [{ "bearerAuth": [] }],
         "parameters": [
           {
             "name": "id",
@@ -168,7 +253,54 @@
         ],
         "responses": {
           "204": { "description": "Deleted" },
-          "404": { "description": "Not found" }
+          "404": { "description": "Not found" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/activity-logs": {
+      "get": {
+        "summary": "Get all activity logs (requires JWT, admin recommended)",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of activity logs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/ActivityLog" }
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/activity-logs/{id}": {
+      "get": {
+        "summary": "Get activity log by id (requires JWT, admin recommended)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Activity log found",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/ActivityLog" }
+              }
+            }
+          },
+          "404": { "description": "Not found" },
+          "401": { "description": "Unauthorized" }
         }
       }
     }
@@ -217,6 +349,27 @@
           }
         },
         "required": ["title"]
+      },
+      "ActivityLog": {
+        "type": "object",
+        "properties": {
+          "user": { "type": "string", "example": "60d5f1234abc..." },
+          "action": { "type": "string", "example": "Created Task" },
+          "entity": { "type": "string", "example": "Task" },
+          "entityId": { "type": "string", "example": "60d5f9876def..." },
+          "details": {
+            "type": "string",
+            "example": "Task titled 'Buy groceries' created"
+          },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   }

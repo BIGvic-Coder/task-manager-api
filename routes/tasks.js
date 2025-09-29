@@ -1,12 +1,16 @@
 // routes/tasks.js
 import express from "express";
 import { body, param, validationResult } from "express-validator";
-import Task from "../models/task.js";
 import mongoose from "mongoose";
+import Task from "../models/task.js";
+import authenticateToken from "../middleware/auth.js"; // ✅ import auth middleware
+import ActivityLog from "../models/activityLog.js"; // ✅ import activity logging
 
 const router = express.Router();
 
-// GET all tasks
+// =======================
+// GET all tasks (public)
+// =======================
 router.get("/", async (req, res, next) => {
   try {
     const tasks = await Task.find().sort({ createdAt: -1 });
@@ -16,7 +20,9 @@ router.get("/", async (req, res, next) => {
   }
 });
 
-// GET task by ID
+// =======================
+// GET task by ID (public)
+// =======================
 router.get(
   "/:id",
   [param("id").custom((v) => mongoose.Types.ObjectId.isValid(v))],
@@ -35,9 +41,12 @@ router.get(
   }
 );
 
-// POST create task
+// =======================
+// POST create task (protected)
+// =======================
 router.post(
   "/",
+  authenticateToken, // ✅ only logged-in users
   [
     body("title").notEmpty().withMessage("title is required"),
     body("priority")
@@ -60,8 +69,21 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
 
     try {
-      const task = new Task(req.body);
+      const task = new Task({
+        ...req.body,
+        owner: req.user.id, // ✅ link to logged-in user
+      });
       await task.save();
+
+      // ✅ log activity
+      await ActivityLog.create({
+        user: req.user.id,
+        action: "Created Task",
+        entity: "Task",
+        entityId: task._id,
+        details: `Task titled "${task.title}" created`,
+      });
+
       res.status(201).json(task);
     } catch (err) {
       next(err);
@@ -69,9 +91,12 @@ router.post(
   }
 );
 
-// PUT update task
+// =======================
+// PUT update task (protected)
+// =======================
 router.put(
   "/:id",
+  authenticateToken,
   [
     param("id").custom((v) => mongoose.Types.ObjectId.isValid(v)),
     body("priority").optional().isIn(["Low", "Medium", "High"]),
@@ -84,11 +109,26 @@ router.put(
       return res.status(400).json({ errors: errors.array() });
 
     try {
-      const updated = await Task.findByIdAndUpdate(req.params.id, req.body, {
-        new: true,
-        runValidators: true,
+      const updated = await Task.findOneAndUpdate(
+        { _id: req.params.id, owner: req.user.id }, // ✅ only owner can update
+        req.body,
+        { new: true, runValidators: true }
+      );
+
+      if (!updated)
+        return res
+          .status(404)
+          .json({ message: "Task not found or not authorized" });
+
+      // ✅ log activity
+      await ActivityLog.create({
+        user: req.user.id,
+        action: "Updated Task",
+        entity: "Task",
+        entityId: updated._id,
+        details: `Task titled "${updated.title}" updated`,
       });
-      if (!updated) return res.status(404).json({ message: "Task not found" });
+
       res.json(updated);
     } catch (err) {
       next(err);
@@ -96,9 +136,12 @@ router.put(
   }
 );
 
-// DELETE task
+// =======================
+// DELETE task (protected)
+// =======================
 router.delete(
   "/:id",
+  authenticateToken,
   [param("id").custom((v) => mongoose.Types.ObjectId.isValid(v))],
   async (req, res, next) => {
     const errors = validationResult(req);
@@ -106,8 +149,25 @@ router.delete(
       return res.status(400).json({ errors: errors.array() });
 
     try {
-      const deleted = await Task.findByIdAndDelete(req.params.id);
-      if (!deleted) return res.status(404).json({ message: "Task not found" });
+      const deleted = await Task.findOneAndDelete({
+        _id: req.params.id,
+        owner: req.user.id, // ✅ only owner can delete
+      });
+
+      if (!deleted)
+        return res
+          .status(404)
+          .json({ message: "Task not found or not authorized" });
+
+      // ✅ log activity
+      await ActivityLog.create({
+        user: req.user.id,
+        action: "Deleted Task",
+        entity: "Task",
+        entityId: req.params.id,
+        details: `Task deleted by user`,
+      });
+
       res.sendStatus(204);
     } catch (err) {
       next(err);

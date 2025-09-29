@@ -7,9 +7,13 @@ import swaggerUi from "swagger-ui-express";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import passport from "passport"; // ✅ import passport for OAuth
 
+// Routes
 import usersRouter from "./routes/users.js";
 import tasksRouter from "./routes/tasks.js";
+import authRouter from "./routes/auth.js";
+import activityLogsRouter from "./routes/activityLogs.js"; // ✅ import activity logs
 
 dotenv.config();
 const app = express();
@@ -27,6 +31,9 @@ app.use(
   })
 );
 app.use(express.json());
+
+// ✅ initialize passport (for Google OAuth)
+app.use(passport.initialize());
 
 // Swagger setup
 const swaggerPath = path.join(__dirname, "swagger.json");
@@ -50,6 +57,8 @@ mongoose
 // Routes
 app.use("/users", usersRouter);
 app.use("/tasks", tasksRouter);
+app.use("/auth", authRouter);
+app.use("/activity-logs", activityLogsRouter); // ✅ register activity logs router
 
 // Root route
 app.get("/", (req, res) => {

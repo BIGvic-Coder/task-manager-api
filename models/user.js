@@ -24,6 +24,22 @@ const userSchema = new mongoose.Schema(
       enum: ["user", "admin"],
       default: "user",
     },
+    oauthProvider: {
+      type: String, // e.g., 'google', 'github'
+      default: null,
+    },
+    oauthId: {
+      type: String, // stores provider ID
+      default: null,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
