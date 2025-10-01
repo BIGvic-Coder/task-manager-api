@@ -1,6 +1,7 @@
 // index.js
 import dotenv from "dotenv";
 dotenv.config(); // ✅ must be at the very top before other imports
+console.log("🔑 Google callback URL in use:", process.env.GOOGLE_CALLBACK_URL);
 
 import express from "express";
 import mongoose from "mongoose";
