@@ -1,27 +1,34 @@
+// config/passport.js
 import dotenv from "dotenv";
 dotenv.config();
 
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-
-const isProduction = process.env.NODE_ENV === "production";
-
-const callbackURL = isProduction
-  ? process.env.GOOGLE_CALLBACK_URL // from Render dashboard
-  : "http://localhost:8080/auth/google/callback"; // for local dev
-
-console.log("🔑 Google callback URL in use:", callbackURL);
+import User from "../models/user.js";
 
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: callbackURL,
+      callbackURL: process.env.GOOGLE_CALLBACK_URL,
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        return done(null, profile);
+        // Try to find existing user
+        let user = await User.findOne({ email: profile.emails[0].value });
+
+        if (!user) {
+          // Create new user
+          user = await User.create({
+            name: profile.displayName,
+            email: profile.emails[0].value,
+            password: null, // since OAuth, no password
+            role: "user",
+          });
+        }
+
+        return done(null, user);
       } catch (err) {
         return done(err, null);
       }
@@ -30,11 +37,16 @@ passport.use(
 );
 
 passport.serializeUser((user, done) => {
-  done(null, user);
+  done(null, user.id);
 });
 
-passport.deserializeUser((obj, done) => {
-  done(null, obj);
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (err) {
+    done(err, null);
+  }
 });
 
 export default passport;
