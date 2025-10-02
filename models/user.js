@@ -16,7 +16,10 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      required: function () {
+        // Password is only required if user is not using OAuth
+        return !this.oauthProvider;
+      },
       minlength: 6,
     },
     role: {

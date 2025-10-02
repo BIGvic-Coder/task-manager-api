@@ -1,4 +1,3 @@
-// config/passport.js
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -15,17 +14,31 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        // Try to find existing user
-        let user = await User.findOne({ email: profile.emails[0].value });
+        // Try to find existing OAuth user
+        let user = await User.findOne({
+          oauthProvider: "google",
+          oauthId: profile.id,
+        });
 
         if (!user) {
-          // Create new user
-          user = await User.create({
-            name: profile.displayName,
-            email: profile.emails[0].value,
-            password: null, // since OAuth, no password
-            role: "user",
-          });
+          // If not found, check if the email already exists (regular account)
+          user = await User.findOne({ email: profile.emails[0].value });
+
+          if (user) {
+            // Link existing user with Google
+            user.oauthProvider = "google";
+            user.oauthId = profile.id;
+            await user.save();
+          } else {
+            // Create new OAuth user (no password required now)
+            user = await User.create({
+              name: profile.displayName,
+              email: profile.emails[0].value,
+              oauthProvider: "google",
+              oauthId: profile.id,
+              role: "user",
+            });
+          }
         }
 
         return done(null, user);
