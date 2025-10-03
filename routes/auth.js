@@ -4,14 +4,14 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { body, validationResult } from "express-validator";
 import passport from "passport";
-import "../config/passport.js"; // make sure you have a Google OAuth strategy setup
+import "../config/passport.js";
 import User from "../models/user.js";
 
 const router = express.Router();
 
 /**
  * POST /auth/register
- * Register a new user
+ * Register new user
  */
 router.post(
   "/register",
@@ -29,25 +29,19 @@ router.post(
 
     try {
       const { name, email, password } = req.body;
-
-      // Check if email already exists
       const existingUser = await User.findOne({ email });
-      if (existingUser) {
+      if (existingUser)
         return res.status(400).json({ message: "Email already registered" });
-      }
 
-      // Hash password
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
 
-      // Create new user
       const user = await User.create({
         name,
         email,
         password: hashedPassword,
         role: "user",
       });
-
       res.status(201).json({ id: user._id, email: user.email });
     } catch (err) {
       next(err);
@@ -57,14 +51,10 @@ router.post(
 
 /**
  * POST /auth/login
- * Login with email + password
  */
 router.post(
   "/login",
-  [
-    body("email").isEmail().withMessage("Valid email is required"),
-    body("password").notEmpty().withMessage("Password is required"),
-  ],
+  [body("email").isEmail(), body("password").notEmpty()],
   async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty())
@@ -72,24 +62,19 @@ router.post(
 
     try {
       const { email, password } = req.body;
-
-      // Check user
       const user = await User.findOne({ email });
       if (!user)
         return res.status(401).json({ message: "Invalid email or password" });
 
-      // Compare password
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch)
         return res.status(401).json({ message: "Invalid email or password" });
 
-      // Create token
       const token = jwt.sign(
         { id: user._id, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: "1h" }
       );
-
       res.json({ token });
     } catch (err) {
       next(err);
@@ -99,11 +84,14 @@ router.post(
 
 /**
  * GET /auth/google
- * Start Google OAuth login
+ * Start Google OAuth
  */
 router.get(
   "/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
+    prompt: "select_account",
+  })
 );
 
 /**
@@ -124,7 +112,6 @@ router.get(
       { expiresIn: "1h" }
     );
 
-    // respond with token (API style)
     res.json({
       token,
       user: { id: user._id, name: user.name, email: user.email },
@@ -132,7 +119,7 @@ router.get(
   }
 );
 
-// Failure route
+// OAuth failure
 router.get("/failure", (req, res) => {
   res.status(401).json({ message: "OAuth login failed" });
 });
