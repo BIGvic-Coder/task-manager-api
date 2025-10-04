@@ -1,18 +1,18 @@
 // index.js
 import dotenv from "dotenv";
-dotenv.config(); // ✅ must be at the very top before other imports
-console.log("🔑 Google callback URL in use:", process.env.GOOGLE_CALLBACK_URL);
+dotenv.config();
+console.log("🔑 Google callback URL:", process.env.GOOGLE_CALLBACK_URL);
 
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import session from "express-session"; // ✅ Added
 import swaggerUi from "swagger-ui-express";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import passport from "passport"; // ✅ import passport for OAuth + JWT
-import jwt from "jsonwebtoken"; // ✅ JWT for token handling
-import "./config/passport.js"; // ✅ load passport config here
+import passport from "passport";
+import "./config/passport.js";
 
 // Routes
 import usersRouter from "./routes/users.js";
@@ -22,7 +22,7 @@ import activityLogsRouter from "./routes/activityLogs.js";
 
 const app = express();
 
-// Workaround for __dirname in ES modules
+// Fix __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -36,10 +36,19 @@ app.use(
 );
 app.use(express.json());
 
-// ✅ initialize passport (for Google OAuth + JWT)
-app.use(passport.initialize());
+// ✅ Express-session required for Passport OAuth handshake
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "secret-key",
+    resave: false,
+    saveUninitialized: false,
+  })
+);
 
-// Swagger setup
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Swagger
 const swaggerPath = path.join(__dirname, "swagger.json");
 let swaggerDocument = {};
 try {
@@ -49,7 +58,7 @@ try {
 }
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// MongoDB connection
+// MongoDB
 mongoose
   .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -64,35 +73,19 @@ app.use("/tasks", tasksRouter);
 app.use("/auth", authRouter);
 app.use("/activity-logs", activityLogsRouter);
 
-// ✅ Protected route (test JWT authentication)
-app.get(
-  "/protected",
-  passport.authenticate("jwt", { session: false }),
-  (req, res) => {
-    res.json({
-      success: true,
-      message: "You have access to this protected route 🎉",
-      user: req.user,
-    });
-  }
-);
-
 // Root route
 app.get("/", (req, res) => {
-  res.send("✅ Task Manager API is running. Visit /api-docs for Swagger UI.");
+  res.send("✅ Task Manager API running. Visit /api-docs for Swagger UI.");
 });
 
-// Global error handler
+// Error handler
 app.use((err, req, res, next) => {
   console.error("🔥 Error:", err.stack);
-  res.status(500).json({
-    success: false,
-    message: "Server error",
-    error: err.message,
-  });
+  res
+    .status(500)
+    .json({ success: false, message: "Server error", error: err.message });
 });
 
-// Start server
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () =>
   console.log(`🚀 Server running at http://localhost:${PORT}`)

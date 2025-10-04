@@ -4,16 +4,17 @@ dotenv.config();
 
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import User from "../models/user.js";
 
+// ---------------- GOOGLE STRATEGY ----------------
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      // ✅ Explicitly set callback URL
       callbackURL: process.env.GOOGLE_CALLBACK_URL,
-      passReqToCallback: true, // ✅ allows us to always attach redirect_uri
+      passReqToCallback: true,
     },
     async (req, accessToken, refreshToken, profile, done) => {
       try {
@@ -23,9 +24,8 @@ passport.use(
         });
 
         if (!user) {
-          // If not found, check if the email already exists (normal account)
+          // Check if user already exists with same email
           user = await User.findOne({ email: profile.emails[0].value });
-
           if (user) {
             user.oauthProvider = "google";
             user.oauthId = profile.id;
@@ -49,9 +49,25 @@ passport.use(
   )
 );
 
-passport.serializeUser((user, done) => {
-  done(null, user.id);
-});
+// ---------------- JWT STRATEGY ----------------
+const jwtOptions = {
+  jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+  secretOrKey: process.env.JWT_SECRET,
+};
+
+passport.use(
+  new JwtStrategy(jwtOptions, async (jwt_payload, done) => {
+    try {
+      const user = await User.findById(jwt_payload.id);
+      if (user) return done(null, user);
+      return done(null, false);
+    } catch (err) {
+      return done(err, false);
+    }
+  })
+);
+
+passport.serializeUser((user, done) => done(null, user.id));
 
 passport.deserializeUser(async (id, done) => {
   try {

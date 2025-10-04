@@ -10,8 +10,7 @@ import User from "../models/user.js";
 const router = express.Router();
 
 /**
- * POST /auth/register
- * Register new user
+ * Register
  */
 router.post(
   "/register",
@@ -33,15 +32,14 @@ router.post(
       if (existingUser)
         return res.status(400).json({ message: "Email already registered" });
 
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-
+      const hashedPassword = await bcrypt.hash(password, 10);
       const user = await User.create({
         name,
         email,
         password: hashedPassword,
         role: "user",
       });
+
       res.status(201).json({ id: user._id, email: user.email });
     } catch (err) {
       next(err);
@@ -50,7 +48,7 @@ router.post(
 );
 
 /**
- * POST /auth/login
+ * Login
  */
 router.post(
   "/login",
@@ -75,7 +73,8 @@ router.post(
         process.env.JWT_SECRET,
         { expiresIn: "1h" }
       );
-      res.json({ token });
+
+      res.json({ message: "Login successful", token });
     } catch (err) {
       next(err);
     }
@@ -83,8 +82,7 @@ router.post(
 );
 
 /**
- * GET /auth/google
- * Start Google OAuth
+ * Google OAuth
  */
 router.get(
   "/google",
@@ -94,15 +92,11 @@ router.get(
   })
 );
 
-/**
- * GET /auth/google/callback
- * Handle Google OAuth response
- */
 router.get(
   "/google/callback",
   passport.authenticate("google", {
-    session: false,
     failureRedirect: "/auth/failure",
+    session: false,
   }),
   (req, res) => {
     const user = req.user;
@@ -112,16 +106,23 @@ router.get(
       { expiresIn: "1h" }
     );
 
-    res.json({
+    res.status(200).json({
+      message: "Google OAuth login successful",
       token,
       user: { id: user._id, name: user.name, email: user.email },
     });
   }
 );
 
-// OAuth failure
 router.get("/failure", (req, res) => {
   res.status(401).json({ message: "OAuth login failed" });
+});
+
+router.get("/logout", (req, res) => {
+  req.logout((err) => {
+    if (err) return res.status(500).json({ message: "Logout failed" });
+    res.json({ message: "Logged out successfully" });
+  });
 });
 
 export default router;
