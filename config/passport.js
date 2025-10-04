@@ -8,11 +8,13 @@ import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import User from "../models/user.js";
 
 // ---------------- GOOGLE STRATEGY ----------------
-// Determine correct callback URL based on environment
+// ✅ Automatically choose correct callback for local vs. production
 const GOOGLE_CALLBACK_URL_FINAL =
-  process.env.NODE_ENV === "production"
-    ? process.env.GOOGLE_CALLBACK_URL_PROD
-    : process.env.GOOGLE_CALLBACK_URL;
+  process.env.GOOGLE_CALLBACK_URL ||
+  process.env.GOOGLE_CALLBACK_URL_PROD ||
+  "http://localhost:8080/auth/google/callback";
+
+console.log("🔑 Using Google Callback URL:", GOOGLE_CALLBACK_URL_FINAL);
 
 passport.use(
   new GoogleStrategy(
@@ -30,8 +32,9 @@ passport.use(
         });
 
         if (!user) {
-          // Check if user already exists with same email
+          // Check if a user already exists with the same email
           user = await User.findOne({ email: profile.emails[0].value });
+
           if (user) {
             user.oauthProvider = "google";
             user.oauthId = profile.id;
