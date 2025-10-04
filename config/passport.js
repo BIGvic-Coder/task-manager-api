@@ -8,12 +8,18 @@ import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import User from "../models/user.js";
 
 // ---------------- GOOGLE STRATEGY ----------------
+// Determine correct callback URL based on environment
+const GOOGLE_CALLBACK_URL_FINAL =
+  process.env.NODE_ENV === "production"
+    ? process.env.GOOGLE_CALLBACK_URL_PROD
+    : process.env.GOOGLE_CALLBACK_URL;
+
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      callbackURL: GOOGLE_CALLBACK_URL_FINAL,
       passReqToCallback: true,
     },
     async (req, accessToken, refreshToken, profile, done) => {
