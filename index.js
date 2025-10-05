@@ -16,7 +16,7 @@ import "./config/passport.js";
 // Import routes
 import usersRouter from "./routes/users.js";
 import tasksRouter from "./routes/tasks.js";
-// Comment out others for Week 5 if not ready yet
+// Uncomment these later when ready
 // import authRouter from "./routes/auth.js";
 // import activityLogsRouter from "./routes/activityLogs.js";
 
@@ -31,12 +31,14 @@ const __dirname = path.dirname(__filename);
 // ==========================
 app.use(
   cors({
-    origin: "*", // Adjust to your frontend URL in production
+    origin: "*", // Change to frontend URL in production
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
 app.use(express.json());
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "secret-key",
@@ -44,6 +46,7 @@ app.use(
     saveUninitialized: false,
   })
 );
+
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -65,10 +68,7 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 // 🌐 MongoDB Connection
 // ==========================
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
@@ -77,8 +77,6 @@ mongoose
 // ==========================
 app.use("/api/users", usersRouter);
 app.use("/api/tasks", tasksRouter);
-
-// Optional routes for later phases
 // app.use("/api/auth", authRouter);
 // app.use("/api/activity-logs", activityLogsRouter);
 
