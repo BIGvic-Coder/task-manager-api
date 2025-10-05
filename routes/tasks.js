@@ -3,50 +3,112 @@ import express from "express";
 import { body, param, validationResult } from "express-validator";
 import mongoose from "mongoose";
 import Task from "../models/task.js";
-import authenticateToken from "../middleware/auth.js"; // ✅ import auth middleware
-import ActivityLog from "../models/activityLog.js"; // ✅ import activity logging
+import authenticateToken from "../middleware/auth.js";
+import ActivityLog from "../models/activityLog.js";
 
 const router = express.Router();
 
-// =======================
-// GET all tasks (public)
-// =======================
+/**
+ * @swagger
+ * tags:
+ *   name: Tasks
+ *   description: Endpoints for managing user tasks
+ */
+
+/**
+ * @swagger
+ * /api/tasks:
+ *   get:
+ *     summary: Get all tasks
+ *     tags: [Tasks]
+ *     responses:
+ *       200:
+ *         description: List of all tasks
+ */
 router.get("/", async (req, res, next) => {
   try {
     const tasks = await Task.find().sort({ createdAt: -1 });
-    res.json(tasks);
+    res.status(200).json(tasks);
   } catch (err) {
     next(err);
   }
 });
 
-// =======================
-// GET task by ID (public)
-// =======================
+/**
+ * @swagger
+ * /api/tasks/{id}:
+ *   get:
+ *     summary: Get a task by ID
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Task ID
+ *     responses:
+ *       200:
+ *         description: Task found
+ *       404:
+ *         description: Task not found
+ */
 router.get(
   "/:id",
   [param("id").custom((v) => mongoose.Types.ObjectId.isValid(v))],
   async (req, res, next) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty())
+    if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
+    }
 
     try {
       const task = await Task.findById(req.params.id);
       if (!task) return res.status(404).json({ message: "Task not found" });
-      res.json(task);
+      res.status(200).json(task);
     } catch (err) {
       next(err);
     }
   }
 );
 
-// =======================
-// POST create task (protected)
-// =======================
+/**
+ * @swagger
+ * /api/tasks:
+ *   post:
+ *     summary: Create a new task (requires authentication)
+ *     tags: [Tasks]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               priority:
+ *                 type: string
+ *                 enum: [Low, Medium, High]
+ *               status:
+ *                 type: string
+ *                 enum: [Pending, In Progress, Completed]
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       201:
+ *         description: Task created successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ */
 router.post(
   "/",
-  authenticateToken, // ✅ only logged-in users
+  authenticateToken,
   [
     body("title").notEmpty().withMessage("title is required"),
     body("priority")
@@ -65,17 +127,17 @@ router.post(
   ],
   async (req, res, next) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty())
+    if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
+    }
 
     try {
       const task = new Task({
         ...req.body,
-        owner: req.user.id, // ✅ link to logged-in user
+        owner: req.user.id,
       });
       await task.save();
 
-      // ✅ log activity
       await ActivityLog.create({
         user: req.user.id,
         action: "Created Task",
@@ -91,9 +153,45 @@ router.post(
   }
 );
 
-// =======================
-// PUT update task (protected)
-// =======================
+/**
+ * @swagger
+ * /api/tasks/{id}:
+ *   put:
+ *     summary: Update an existing task (requires authentication)
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Task ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               priority:
+ *                 type: string
+ *                 enum: [Low, Medium, High]
+ *               status:
+ *                 type: string
+ *                 enum: [Pending, In Progress, Completed]
+ *               dueDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: Task updated successfully
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Task not found or unauthorized
+ */
 router.put(
   "/:id",
   authenticateToken,
@@ -105,12 +203,13 @@ router.put(
   ],
   async (req, res, next) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty())
+    if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
+    }
 
     try {
       const updated = await Task.findOneAndUpdate(
-        { _id: req.params.id, owner: req.user.id }, // ✅ only owner can update
+        { _id: req.params.id, owner: req.user.id },
         req.body,
         { new: true, runValidators: true }
       );
@@ -120,7 +219,6 @@ router.put(
           .status(404)
           .json({ message: "Task not found or not authorized" });
 
-      // ✅ log activity
       await ActivityLog.create({
         user: req.user.id,
         action: "Updated Task",
@@ -129,29 +227,46 @@ router.put(
         details: `Task titled "${updated.title}" updated`,
       });
 
-      res.json(updated);
+      res.status(200).json(updated);
     } catch (err) {
       next(err);
     }
   }
 );
 
-// =======================
-// DELETE task (protected)
-// =======================
+/**
+ * @swagger
+ * /api/tasks/{id}:
+ *   delete:
+ *     summary: Delete a task (requires authentication)
+ *     tags: [Tasks]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Task ID
+ *     responses:
+ *       204:
+ *         description: Task deleted successfully
+ *       404:
+ *         description: Task not found or unauthorized
+ */
 router.delete(
   "/:id",
   authenticateToken,
   [param("id").custom((v) => mongoose.Types.ObjectId.isValid(v))],
   async (req, res, next) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty())
+    if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
+    }
 
     try {
       const deleted = await Task.findOneAndDelete({
         _id: req.params.id,
-        owner: req.user.id, // ✅ only owner can delete
+        owner: req.user.id,
       });
 
       if (!deleted)
@@ -159,7 +274,6 @@ router.delete(
           .status(404)
           .json({ message: "Task not found or not authorized" });
 
-      // ✅ log activity
       await ActivityLog.create({
         user: req.user.id,
         action: "Deleted Task",
