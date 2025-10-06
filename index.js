@@ -16,7 +16,7 @@ import "./config/passport.js";
 // Import routes
 import usersRouter from "./routes/users.js";
 import tasksRouter from "./routes/tasks.js";
-// Uncomment these later when ready
+// Uncomment later when ready
 // import authRouter from "./routes/auth.js";
 // import activityLogsRouter from "./routes/activityLogs.js";
 
@@ -31,7 +31,7 @@ const __dirname = path.dirname(__filename);
 // ==========================
 app.use(
   cors({
-    origin: "*", // Change to frontend URL in production
+    origin: "*",
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
@@ -55,13 +55,11 @@ app.use(passport.session());
 // ==========================
 const swaggerPath = path.join(__dirname, "swagger.json");
 let swaggerDocument = {};
-
 try {
   swaggerDocument = JSON.parse(fs.readFileSync(swaggerPath, "utf-8"));
 } catch (err) {
   console.error("⚠️ Could not load swagger.json:", err.message);
 }
-
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 // ==========================
@@ -87,7 +85,6 @@ app.get("/", (req, res) => {
   res.send("✅ Task Manager API running. Visit /api-docs for Swagger UI.");
 });
 
-// Global Error Handler
 app.use((err, req, res, next) => {
   console.error("🔥 Error:", err.stack);
   res.status(500).json({
